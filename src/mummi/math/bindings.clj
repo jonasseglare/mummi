@@ -1,0 +1,18 @@
+(ns mummi.math.bindings)
+
+(declare add)
+(declare sub)
+(declare mul)
+(declare div)
+(declare make)
+(declare sqrt)
+(declare neg)
+(declare less?)
+
+(def ^:dynamic add clojure.core/+)
+(def ^:dynamic sub clojure.core/-)
+(def ^:dynamic mul clojure.core/*)
+(def ^:dynamic div clojure.core//)
+(def ^:dynamic make identity)
+(def ^:dynamic neg clojure.core/-)
+(def ^:dynamic less clojure.core/<)
