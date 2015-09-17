@@ -71,11 +71,18 @@
    spec
    (str "SELECT src,dst FROM " (active-name table-name) " WHERE active=true")))
 
-(defn get-active-edges-from [spec table-name src]
+(defn get-edges-from [spec table-name src all?]
   (jdbc/query
    spec
-   [(str "SELECT src,dst FROM " (active-name table-name) " WHERE active=true AND src=?")
+   [(str "SELECT src,dst FROM " (active-name table-name) " WHERE "
+         (if all? "" "active=true AND ") "src=?")
     src]))
+
+(defn get-active-edges-from [spec table-name src]
+  (get-edges-from spec table-name src false))
+
+(defn get-all-edges-from [spec table-name src]
+  (get-edges-from spec table-name src true))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; FUNCTIONS WITH TRANSACTIONS
 
