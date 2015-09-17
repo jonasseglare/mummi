@@ -15,3 +15,6 @@
    (if reset? (str "DROP TABLE IF EXISTS " table-name "; ") "")
    "CREATE TABLE "
    (if reset? "" "IF NOT EXISTS ") table-name))
+
+(defn spec? [x]
+  (map? x))
