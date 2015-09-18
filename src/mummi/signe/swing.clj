@@ -104,7 +104,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;; This file: Bindings for common swing controller.
 
 
-(defn bind-label-text [this controller]
+(defn bind-widget-text [this controller]
   (bind-widget-updater
    this controller
    (fn [old-value new-value]
@@ -114,7 +114,7 @@
 (extend-type JLabel
   Bindable
   (bind [this controller]
-    (bind-label-text this controller)))
+    (bind-widget-text this controller)))
 
 (defn different-from-local-state [local-state value]
   (not= (deref local-state) value))
@@ -597,3 +597,24 @@
    (fn [old-value new-value]
      (invoke-later
       (.setEnabled widget (if new-value true false))))))
+
+
+
+
+
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Widget attributes
+
+(defrecord2 WidgetText [widget])
+
+(extend-type WidgetText
+  Bindable
+  (bind [this controller]
+    (bind-widget-text (:widget this) controller)))
+
+(defn get-text [widget]
+  (->WidgetText widget))
+

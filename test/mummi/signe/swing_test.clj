@@ -228,3 +228,14 @@
     (gui.common/show-frame
      "Panel demo"
      panel)))
+
+(defn widget-text-demo []
+  (gui.common/show-frame
+   "Widget text demo"
+   (let [model (controller/make-controller "Text...")
+         button (JButton.)]
+     (controller/bind (get-text button) model)
+     (gridbag/make-gridbag-panel
+      {:insets {:any 5}}
+      [{:gridx 0 :gridy 0 :widget (controller/bind (JTextField.) model)}
+       {:gridx 0 :gridy 1 :widget button}]))))
