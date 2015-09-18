@@ -1,6 +1,6 @@
 (ns mummi.signe.swing-test
   (:import [javax.swing JTextField JFrame JLabel JTextArea JList JButton JComboBox
-            JSpinner SpinnerNumberModel JCheckBox JRadioButton])
+            JSpinner SpinnerNumberModel JCheckBox JRadioButton JPanel])
   (:require [mummi.gui.gridbag :as gridbag])
   (:require [seesaw.core :refer [invoke-later]])
   (:require [mummi.gui.common :as gui.common])
@@ -123,8 +123,6 @@
                                            (fn [index]
                                              (odd? (nth (:items x) index)))
                                            (range (count (:items x))))))))))}]))))
-     
-     
 
 (defn combo-box-demo2 []
   (gui.common/show-frame
@@ -215,3 +213,18 @@
       [{:gridx 0 :gridy 0 :widget
         (bind-toggle-button
          (JButton.) ["false" "true"] model)}]))))
+
+
+
+(defn panel-demo2 []
+  (let [ctrl (controller/make-controller {1 "Rulle", 2 "Mjao"})
+        panel (JPanel.)]
+    (controller/bind-map
+     panel
+     ctrl
+     (fn [map-ctrl key value value-ctrl]
+       (controller/bind (JLabel.) value-ctrl))
+     first)
+    (gui.common/show-frame
+     "Panel demo"
+     panel)))
