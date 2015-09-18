@@ -254,13 +254,14 @@
    spinner
    (proxy [ChangeListener] []
      (stateChanged [e]
-       (invoke-soon
+       (invoke-later
         (let [v (.getValue spinner)]
           (reset-async controller v))))))
   (bind-widget-updater
    spinner controller
    (fn [old-value new-value]
-     (.setValue spinner (Integer. new-value))))
+     (invoke-later
+      (.setValue spinner (Integer. new-value)))))
   spinner)
 
 (extend-type JSpinner

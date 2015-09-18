@@ -1,5 +1,6 @@
 (ns mummi.signe.swing-test
-  (:import [javax.swing JTextField JFrame JLabel JTextArea JList JButton JComboBox])
+  (:import [javax.swing JTextField JFrame JLabel JTextArea JList JButton JComboBox
+            JSpinner SpinnerNumberModel])
   (:require [mummi.gui.gridbag :as gridbag])
   (:require [seesaw.core :refer [invoke-later]])
   (:require [mummi.gui.common :as gui.common])
@@ -155,3 +156,18 @@
                                         (conj x (controller/get-state new-name))))))}]))))
 
 
+(defn make-default-spinner []
+  (JSpinner.
+   (SpinnerNumberModel.
+    (Integer. 1) (Integer. 0) nil (Integer. 1))))
+
+(defn jspinner-demo []
+  (gui.common/show-frame
+   "JSpinner demo"
+   (let [model (controller/make-controller 0)]
+     (gridbag/make-gridbag-panel
+      {:insets {:any 5}}
+      [{:gridx 0 :gridy 0 :widget (JLabel. "Spinner 1")}
+       {:gridx 1 :gridy 0 :widget (controller/bind (make-default-spinner) model)}
+       {:gridx 0 :gridy 1 :widget (JLabel. "Spinner 2")}
+       {:gridx 1 :gridy 1 :widget (controller/bind (make-default-spinner) model)}]))))
