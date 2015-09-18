@@ -32,6 +32,23 @@
      (windowOpened [e] ))))
 
 
+;; Returns a function that will return
+;; its input argument if it is different from
+;; the last input argument, otherwise nil.
+;; Used to avoid cyclic updates between the widget
+;; and the model.
+(defn make-value-filter []
+  (let [state (atom nil)]
+    (fn [x]
+      (let [result (atom nil)]
+        (swap!
+         state
+         (fn [last-value]
+           (when (not= last-value x)
+             (reset! result x))
+           x))
+        (deref result)))))
+
 ;; Closes the controller once the ancestor of a widget, if there ever was one,
 ;; is no longer displayable (that is it has been disposed)
 (defn bind-on-dispose [widget fun]
@@ -97,93 +114,76 @@
   (not= (deref local-state) value))
 
 
-
-
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;; Text
-(defn- add-default-textfield-handlers [this controller local-state]
-  (assert (Controller? controller))
-  (assert (Atomic? local-state))
-  (report-errors
-   (let [update-model (fn []
-                        (let [txt (invoke-soon (.getText this))]
-                          (reset-async controller txt)))
-         init-value (get-state controller)]
-     (invoke-now
-      (if (not (nil? init-value))
-        (.setText this init-value)))
-     (bind-widget-updater
-       this
-       controller
-       (fn [old-value new-value]
-         (invoke-now
-          (when (different-from-local-state local-state new-value)
-            (.setText this new-value)))))
+(defn listen-to-document [widget controller listener]
+  (.addDocumentListener
+   (.getDocument widget)
+   (proxy [DocumentListener] []
+     (changedUpdate [e]
+       (listener widget controller))
+     (removeUpdate [e]
+       (listener widget controller))
+     (insertUpdate [e]
+       (listener widget controller)))))
 
-     (if (instance? JTextField this)
-       (.addActionListener
-        this
-        (proxy [ActionListener] []
-          (actionPerformed [e]
-            (update-model)))))
+(defn listen-to-actions [widget controller listener]
+  (when (instance? JTextField widget)
+    (.addActionListener
+     widget
+     (proxy [ActionListener] []
+       (actionPerformed [e]
+         (listener widget controller)))))
+  (.addFocusListener
+   widget
+   (proxy [FocusListener] []
+     (focusLost [e]
+       (listener widget controller))
+     (focusGained [e]
+       (listener widget controller)))))
 
-     (.addFocusListener
-      this
-      (proxy [FocusListener] []
-        (focusLost [e]
-          (update-model))
-        (focusGained [e]
-          (update-model))))
-     init-value)))
+(defn update-model-on-text-change [widget controller value-filter]
+  (invoke-later
+   (when-let [txt (value-filter (.getText widget))]
+     (reset-sync controller txt))))
 
-(defn bind-deferred-text-widget [this controller]
-  (add-default-textfield-handlers
-   this controller (atom nil))
-  this)
+(defn update-text-on-model-change [widget control value-filter oldv newv]
+  (invoke-later
+   (when (not= oldv newv)
+     (when-let [x (value-filter newv)]
+       (.setText widget x)))))
+  
+(defn bind-text-widget-sub [widget controller listen-to-something]
+  (let [f (make-value-filter)]
+    (listen-to-something
+     widget controller
+     (fn [widget controller]
+       (update-model-on-text-change widget controller f)))
+    (bind-widget-updater
+     widget controller
+     (fn [oldv newv]
+       (update-text-on-model-change widget controller f oldv newv)))))
 
-(defn bind-text-widget [this controller]
-  (let [local-state (atom nil)
-        init-value
-        (add-default-textfield-handlers
-         this controller local-state)]
-    (report-errors
-     (let [initialized (atom false)
-           ud (fn []
-                (swap!
-                 initialized
-                 (fn [init]
-                   (let [txt (.getText this)]
-                     (if (or init (= txt init-value) (not (empty? txt)))
-                       (do (reset! local-state txt)
-                           (reset-async controller txt)
-                           true))))))]
-       (.addDocumentListener
-        (.getDocument this)
-        (proxy [DocumentListener] []
-          (changedUpdate [e]
-            (ud))
-          (removeUpdate [e]
-            (ud))
-          (insertUpdate [e]
-            (ud)))))))
-  this)
+(defn bind-text-widget [widget controller]
+  (bind-text-widget-sub widget controller listen-to-document))
+
+(defn bind-text-widget-deferred [widget controller]
+  (bind-text-widget-sub widget controller listen-to-actions))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;; JTextField
 (extend-type JTextField
   Bindable
   (bind-deferred [this controller]
-    (bind-deferred-text-widget this controller))
+    (bind-text-widget-deferred this controller))
   (bind [this controller]
     (bind-text-widget this controller)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;; JTextField
+;;;;;;;;;;;;;;;;;;;;;;;;;;; JTextArea
 (extend-type JTextArea
   Bindable
   
   ;; Synchronizes model with text box, only when out of focus.
   (bind-deferred [this controller]
-    (bind-deferred-text-widget this controller))
+    (bind-text-widget-deferred this controller))
 
   ;; Synchronizes model with text box, immediately.
   (bind [this controller]
