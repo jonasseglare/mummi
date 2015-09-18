@@ -1,5 +1,5 @@
 (ns mummi.signe.swing-test
-  (:import [javax.swing JTextField JFrame JLabel JTextArea JList JButton])
+  (:import [javax.swing JTextField JFrame JLabel JTextArea JList JButton JComboBox])
   (:require [mummi.gui.gridbag :as gridbag])
   (:require [seesaw.core :refer [invoke-later]])
   (:require [mummi.gui.common :as gui.common])
@@ -124,3 +124,34 @@
                                            (range (count (:items x))))))))))}]))))
      
      
+
+(defn combo-box-demo2 []
+  (gui.common/show-frame
+   "Combo box demo"
+   (let [model (controller/make-controller ["Rudolf" "Havsan"])
+         combo-model (controller/compose
+                      {:items model :index (controller/make-controller -1)})
+         full-model-str (controller/derive-controller combo-model str)
+         label-model (controller/derive-controller
+                      combo-model
+                      (fn [value]
+                        (if (and (number? (:index value)) (<= 0 (:index value)))
+                          (str "You selected "
+                               (common/nthnil (:items value) (:index value)))
+                          "")))
+         new-name (controller/make-controller "")]
+     (gridbag/make-gridbag-panel
+      {:insets {:any 5}}
+      [{:gridx 0 :gridy 0 :widget (controller/bind (JComboBox.) combo-model)}
+       {:gridx 0 :gridy 1 :widget (controller/bind (JLabel.) label-model)}
+       {:gridx 0 :gridy 2 :widget (controller/bind (JLabel.) full-model-str)}
+       {:gridx 0 :gridy 3 :widget (controller/bind (JTextField. 20) new-name)}
+       {:gridx 0 :gridy 4 :widget (controller/bind
+                                   (JButton. "Add string")
+                                   (fn []
+                                     (controller/update-sync 
+                                      model
+                                      (fn [x]
+                                        (conj x (controller/get-state new-name))))))}]))))
+
+

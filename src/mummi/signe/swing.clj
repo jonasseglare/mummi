@@ -49,6 +49,12 @@
            x))
         (deref result)))))
 
+(defn make-index-filter []
+  (let [value-filter (make-value-filter)]
+    (fn [x]
+      (if-let [y (value-filter x)]
+        (if (< y 0) nil y)))))
+
 ;; Closes the controller once the ancestor of a widget, if there ever was one,
 ;; is no longer displayable (that is it has been disposed)
 (defn bind-on-dispose [widget fun]
@@ -223,7 +229,7 @@
    checkbox controller
    (fn [old-value new-value]
      (invoke-soon
-      (.setSelected checkbox new-value))))
+      (.setSelected checkbox (if new-value true false)))))
   (.addActionListener
    checkbox
    (proxy [ActionListener] []
@@ -461,43 +467,62 @@
     (bind-list this list-ctrl)
     this))
 
+
+
+
+
+
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Combo box
+
 (defn make-combo-box-model [items]
   (let [m (DefaultComboBoxModel.)]
     (doseq [i items]
       (.addElement m i))
     m))
-        
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Combo box
-(defn bind-combo-box [box list-ctrl]
-  (let [lock (atom false)]
-    (.addItemListener
-     box
-     (proxy [ItemListener] []
-       (itemStateChanged [e]
-         (future
-           (report-errors
-            (with-lock lock
-              (let [index (.getSelectedIndex box)]
-                (update-sync
-                 list-ctrl
-                 (fn [v]
-                   (assoc v :index index))))))))))
-    (bind-widget-updater
-     box list-ctrl
-     (fn [old-value new-value]
-       (with-lock lock
-         (invoke-soon
-          (when (not= (:items old-value) (:items new-value))
-            (.setModel box (make-combo-box-model (:items new-value))))
-          (.setSelectedIndex box
-                             (:index new-value)))))))
-    box)
+(defn combo-listen-to-list-model [widget controller index-filter item-filter]
+  (bind-widget-updater
+   widget controller
+   (fn [oldv newv]
+     (invoke-later
+      (when-let [items (item-filter (:items newv))]
+        (.setModel widget (make-combo-box-model items)))
+      (when-let [index (index-filter (:index newv))]
+        (.setSelectedIndex widget index))))))
+
+
+(defn update-model-index-from-combo [widget controller index-filter]
+  (invoke-later
+   (when-let [index (index-filter (.getSelectedIndex widget))]
+     (update-sync
+      controller
+      (fn [v]
+        (assoc v :index index))))))
+
+
+(defn listen-to-combo [widget controller index-filter]
+  (.addItemListener
+   widget
+   (proxy [ItemListener] []
+     (itemStateChanged [e]
+       (update-model-index-from-combo widget controller index-filter)))))
+        
+(defn bind-combo-box2 [widget controller]
+  (let [index-filter (make-value-filter)
+        item-filter (make-value-filter)]
+    (combo-listen-to-list-model widget controller index-filter item-filter)
+    (listen-to-combo widget controller index-filter)
+    (update-model-index-from-combo widget controller index-filter)))
 
 (extend-type JComboBox
   Bindable
   (bind [this list-ctrl]
-    (bind-combo-box this list-ctrl)))
+    (bind-combo-box2 this list-ctrl)
+    this))
     
 
 
