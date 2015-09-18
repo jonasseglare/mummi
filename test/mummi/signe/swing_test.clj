@@ -1,7 +1,9 @@
 (ns mummi.signe.swing-test
-  (:import [javax.swing JTextField JFrame JLabel JTextArea])
+  (:import [javax.swing JTextField JFrame JLabel JTextArea JList JButton])
   (:require [mummi.gui.gridbag :as gridbag])
+  (:require [seesaw.core :refer [invoke-later]])
   (:require [mummi.gui.common :as gui.common])
+  (:require [mummi.common :as common])
   (:require [mummi.signe.swing :refer :all])
   (:require [mummi.signe.controller :as controller])
   (:require [clojure.test :refer :all]))
@@ -44,3 +46,81 @@
        {:gridx 1 :gridy 0 :widget (controller/bind-deferred (JTextArea. 20 30) model)}
        {:gridx 0 :gridy 1 :widget (controller/bind (JLabel. "") chars)}]))))
 
+
+(defn list-demo2 []
+  (gui.common/show-frame
+   "List demo"
+   (let [txt-field (JTextField. 30)
+         model (controller/make-controller {:index 0 :items ["Rudolf" "Havsan" "Signe"]})
+         name-ctrl (controller/derive-controller
+                    model
+                    (fn [value]
+                      (if (nil? (:index value))
+                        ""
+                        (if-let [sel (common/nthnil (:items value) (:index value))]
+                          (str "Selection: " sel)
+                          ""))))]
+     (gridbag/make-gridbag-panel
+      {:insets {:any 5}}
+      [{:gridx 0 :gridy 0 :widget (controller/bind (JList.) model)}
+       {:gridx 1 :gridy 0 :widget (controller/bind (JLabel.) name-ctrl)}
+       {:gridx 0 :gridy 1 :widget txt-field}
+       {:gridx 1 :gridy 1 :widget (controller/bind
+                                   (JButton. "Add")
+                                   (fn []
+                                     (controller/update-sync
+                                      model
+                                      (fn [value]
+                                        (common/with-field value items
+                                          (conj items (.getText txt-field)))))))}
+       {:gridx 0 :gridy 2 :widget (controller/bind
+                                   (JButton. "Move down")
+                                   (fn []
+                                     (controller/update-sync
+                                      model
+                                      (fn [value]
+                                        (let [items (:items value)
+                                              index (:index value)]
+                                          (if (nil? index)
+                                            value
+                                            (if (and (<= 0 index)
+                                                     (< (inc index) (count items)))
+                                              (let [a (nth items index)
+                                                    b (nth items (inc index))]
+                                                {:items
+                                                 (assoc
+                                                  (assoc items index b)
+                                                  (inc index) a)
+                                                 :index (inc index)})
+                                              value)))))))}]))))
+                                                  
+                                              
+
+(defn list-demo3 []
+  (gui.common/show-frame
+   "List demo sum"
+   (let [model (controller/make-controller {:inds [] :items [1 2 3 4 5 6 7]})
+         sum (controller/derive-controller
+              model
+              (fn [x]
+                (str "Sum: " (reduce + (map (fn [i] (nth (:items x) i)) (:inds x))))))]
+     (gridbag/make-gridbag-panel
+      {:insets {:any 5}}
+      [{:gridx 0 :gridy 0 :widget (controller/bind (JList.) model)}
+       {:gridx 0 :gridy 1 :widget (controller/bind (JLabel.) sum)}
+       {:gridx 0 :gridy 2 :widget (controller/bind
+                                   (JButton. "Select odd")
+                                   (fn []
+                                     (controller/update-sync
+                                      model
+                                      (fn [x]
+                                        (assoc
+                                         x
+                                         :inds
+                                         (vec
+                                          (filter
+                                           (fn [index]
+                                             (odd? (nth (:items x) index)))
+                                           (range (count (:items x))))))))))}]))))
+     
+     

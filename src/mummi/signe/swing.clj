@@ -374,7 +374,6 @@
              (every? number? (:inds list))))
        (contains? list :items)))
 
-
 (defn update-list-model [model items]
   (report-errors
    (.clear model)
@@ -385,28 +384,9 @@
 (defn make-list-model [items]
   (update-list-model (DefaultListModel.) items))
 
-
-;; (defn get-index-or-inds [x]
-;;   (if (contains? x :index)
-;;     (:index x)
-;;     (:inds x)))
-
 (defn ensure-selection-mode [list mode]
   (if (not= (.getSelectionMode list) mode)
     (.setSelectionMode list mode)))
-
-
-;; Updates a model from the indices.
-(defn make-model-index-updater [lock controller list]
-  (fn []
-    (future
-      (with-lock lock
-        (update-sync
-         controller
-         (fn [value]
-           (if (contains? value :index)
-             (assoc value :index (.getSelectedIndex list))
-             (assoc value :inds (vec (.getSelectedIndices list))))))))))
 
 (defn get-index-data [widget]
   (if (= (.getSelectionMode widget)
@@ -423,23 +403,6 @@
 (defn get-index-model-data [model]
   (get model (get-index-mode model)))
 
-(defn bind-selection-listener [private-state lock list controller]
-  (assert (instance? JList list))
-  (assert (Controller? controller))
-  (.addListSelectionListener
-   list
-   (proxy [ListSelectionListener] []
-     (valueChanged [e]
-       (if (not (deref lock))
-         (let [index-data (get-index-data list)]
-           (update-async
-            controller
-            (fn [value]
-              (let [new-state (set-index-data value index-data)]
-                (reset! private-state new-state)
-                new-state)))))))))
-
-
 (defn set-list-selection [list index-data]
   (if (coll? index-data)
     (do
@@ -451,98 +414,52 @@
        list
        index-data))))
 
-(defn make-init-fun []
-  (let [state (atom false)]
-    (fn []
-      (let [x (deref state)]
-        (reset! state true)
-        x))))
 
-(defn read-state-and-reset [state]
-  (let [p (promise)]
-    (swap! state (fn [x]
-                   (deliver p x)
-                   nil))
-    (deref p)))
+(defn listen-to-list-widget-updates [widget controller index-filter]
+  (.addListSelectionListener
+   widget
+   (proxy [ListSelectionListener] []
+     (valueChanged [e]
+       (invoke-later
+        (if-let [index-data (index-filter (get-index-data widget))]
+          (update-sync
+           controller
+           (fn [list-model]
+             (set-index-data list-model index-data)))))))))
 
-(defn read-state-and-update [private-state new-value]
-  (let [p (promise)]
-    (swap! private-state (fn [x]
-                           (deliver p x)
-                           new-value))
-    (deref p)))
-
-(defn make-list-updater [private-state lock  list controller]
-  (assert (instance? JList list))
-  (assert (Controller? controller))
-  (let [list-model (DefaultListModel.)]
-    (invoke-soon
-     (.setModel list list-model))
-    (fn [old-value new-value]
-      (let  [last-state (read-state-and-update private-state new-value)]
-        (when (not= last-state new-value)
-          (invoke-soon
-           (with-lock lock
-             (when (not= (:items last-state) (:items new-value))
-               (update-list-model list-model (:items new-value)))
-             (set-list-selection list (get-index-model-data new-value)))))))))
-         
-
-(defn bind-list-updater [private-state lock list controller]
-  (bind-widget-updater
-   list controller
-   (make-list-updater private-state lock list controller)))
-
-(defn bind-list [list controller]
-  (let [private-state (atom nil)
-        lock (atom false)]
-    (bind-selection-listener private-state lock list controller)
-    (bind-list-updater private-state lock list controller)
-    list))
-
-(defn bind-list-old [list controller]
-  (assert (Controller? controller))
-  (let [lock (atom false)
-        update-model (make-model-index-updater lock controller list)]
-    (.addListSelectionListener
-     list
-     (proxy [ListSelectionListener] []
-       (valueChanged [e]
-         (update-model))))
+(defn listen-to-list-model-updates [widget controller index-filter]
+  (let [list-model (DefaultListModel.)
+        item-filter (make-value-filter)]
+    (invoke-later
+     (.setModel widget list-model))
     (bind-widget-updater
-      list controller
-      (fn [old-value new-value]
-        (with-lock lock
-          (report-errors
-           (assert (or (nil? list)
-                       (is-list-value new-value)))
-           (let [items-updated (not= (:items old-value)
-                                     (:items new-value))]
-             (when items-updated
-               (.setModel list (make-list-model (:items new-value))))
+     widget controller
+     (fn [oldv newv]
+       (invoke-later
+        (let [index-model-data (get-index-model-data newv)]
+          (when-let [items (item-filter (:items newv))]
+            (update-list-model list-model items)
+            (index-filter index-model-data)
+            (set-list-selection widget index-model-data))
+          (when-let [index-data (index-filter index-model-data)]
+            (set-list-selection widget index-data))))))))
+  
+;; Main function
+(defn bind-list [widget controller]
+  (let [index-filter (make-value-filter)]
+    ;; Changes in the list should propagate to the model
+    (listen-to-list-widget-updates
+     widget controller index-filter)
 
-             ;; Set the index after model has been updated
-             (if (contains? new-value :index)
-;               (when (or items-updated (not= (:index old-value)
-;                                             (:index new-value)))
-               (do
-                 (ensure-selection-mode list ListSelectionModel/SINGLE_SELECTION)
-                 (.setSelectedIndex
-                  list
-                  (:index new-value)))
-               ;(when (or items-updated (not= (:inds old-value) (:inds new-value)))
-               (do
-                 (ensure-selection-mode list ListSelectionModel/MULTIPLE_INTERVAL_SELECTION)
-                 (.setSelectedIndices list (int-array (:inds new-value))))))
-           )))))
-    list)
-       
-             
+    ;; Changes in the model should propagate to the list
+    (listen-to-list-model-updates
+     widget controller index-filter)))
 
 (extend-type JList
   Bindable
   (bind [this list-ctrl]
-    (bind-list this list-ctrl)))
+    (bind-list this list-ctrl)
+    this))
 
 (defn make-combo-box-model [items]
   (let [m (DefaultComboBoxModel.)]
