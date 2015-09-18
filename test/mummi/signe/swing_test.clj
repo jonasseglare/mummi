@@ -1,6 +1,6 @@
 (ns mummi.signe.swing-test
   (:import [javax.swing JTextField JFrame JLabel JTextArea JList JButton JComboBox
-            JSpinner SpinnerNumberModel])
+            JSpinner SpinnerNumberModel JCheckBox JRadioButton])
   (:require [mummi.gui.gridbag :as gridbag])
   (:require [seesaw.core :refer [invoke-later]])
   (:require [mummi.gui.common :as gui.common])
@@ -171,3 +171,47 @@
        {:gridx 1 :gridy 0 :widget (controller/bind (make-default-spinner) model)}
        {:gridx 0 :gridy 1 :widget (JLabel. "Spinner 2")}
        {:gridx 1 :gridy 1 :widget (controller/bind (make-default-spinner) model)}]))))
+
+(defn checkbox-demo2 []
+  (gui.common/show-frame
+   "Checkbox demo"
+   (let [model (controller/make-controller false)
+         false-model (controller/derive-controller
+                      model
+                      (fn [x]
+                        (not x))
+                      (fn [dst newv]
+                        (not newv)))]
+     (gridbag/make-gridbag-panel
+      {:insets {:any 5}}
+      [{:gridx 0 :gridy 0 :widget (controller/bind (JCheckBox. "True") model)}
+       {:gridx 0 :gridy 1 :widget (controller/bind (JCheckBox. "False") false-model)}]))))
+
+(defn radio-button-demo2 []
+  (let [model (controller/make-controller :rulle)
+        b0 (JRadioButton. "Rulle")
+        b1 (JRadioButton. "Havsan")
+        sel (controller/derive-controller
+             model
+             (fn [key]
+               (str "You selected "
+                    (get {:rulle "Rudolf"
+                          :havsan "Havsan"} key))))]
+    (bind-radio-buttons {:rulle b0, :havsan b1} model)
+    (gui.common/show-frame
+     "Radio button demo"
+     (gridbag/make-gridbag-panel
+      {:insets {:any 5}}
+      [{:gridx 0 :gridy 0 :widget b0}
+       {:gridx 0 :gridy 1 :widget b1}
+       {:gridx 0 :gridy 2 :widget (controller/bind (JLabel.) sel)}]))))
+
+(defn toggle-button-demo2 []
+  (let [model (controller/make-controller false)]
+    (gui.common/show-frame
+     "Toggle button"
+     (gridbag/make-gridbag-panel
+      {:insets {:any 5}}
+      [{:gridx 0 :gridy 0 :widget
+        (bind-toggle-button
+         (JButton.) ["false" "true"] model)}]))))

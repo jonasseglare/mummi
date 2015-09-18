@@ -591,6 +591,13 @@
   button)
 
 
+(defn bind-enabled [widget controller]
+  (bind-widget-updater
+   widget controller
+   (fn [old-value new-value]
+     (invoke-later
+      (.setEnabled widget (if new-value true false))))))
+
 
 
 
@@ -603,125 +610,6 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;; DEMOS
-(defn label-demo []
-  (let [ctrl (make-controller {:a "Rulle"})
-        sctrl (derive-controller ctrl :a)
-        label (JLabel.)]
-    (bind label sctrl)
-    (disp-widget label)
-    sctrl))
-
-(defn text-demo [deferred?]
-  (let [ctrl (make-controller {:a ""})
-        sctrl (derive-controller ctrl :a)
-        label (JLabel.)
-        text (JTextField. 20)]
-    (subscribe
-     ctrl
-     (fn [oldv newv]
-       (log-message "New value: " newv)))
-    (disp-widget (bind label sctrl))
-    (disp-widget
-     (if deferred?
-       (bind-deferred text sctrl)
-       (bind text sctrl)))
-    sctrl))
-
-(defn text-demo2 []
-  (let [ctrl (make-controller "")
-        text0 (JTextField. 20)
-        text1 (JTextField. 20)]
-    (disp-widget (bind-deferred text0 ctrl))
-    (disp-widget (bind text1 ctrl))))
-
-(defn counter-demo []
-  (let [ctrl (make-controller "")
-        f (JFrame.)]
-    (disp-widget
-     (bind-apply (JButton. "Increase by 1")
-                 ctrl (fn [x] (str x "1"))))
-    (disp-widget
-     (bind (JLabel.) ctrl))
-    ctrl))
-
-
-(defn age-demo []
-  (let [ctrl (make-controller {:name "Jonas" :age 28})
-        name (derive-controller ctrl :name)
-        age (float2str
-             (constrained
-              (derive-controller ctrl :age)
-              (fn [age] (<= 0 age))))]
-    (disp-widget
-     (doto (JPanel.)
-       (.add (bind (JTextField. 20) name))
-       (.add (bind-deferred (JTextField. 20) age))
-       (.add (bind (JLabel.) (labeled "ctrl" ctrl)))
-       (.add (bind (JLabel.) (labeled "name" name)))
-       (.add (bind (JLabel.) (labeled "age" age)))))))
-
-(defn distributed-demo []
-  (let [name (make-controller "Jonas")
-        age (float2str
-             (constrained
-              (make-controller 0)
-              (fn [age] (<= 0 age))))
-        ctrl (compose {:name name
-                       :age age})]
-    (disp-widget
-     (doto (JPanel.)
-       (.add (bind (JTextField. 20) name))
-       (.add (bind-deferred (JTextField. 20) age))
-       (.add (bind (JLabel.) (labeled "ctrl" ctrl)))
-       (.add (bind (JLabel.) (labeled "name" name)))
-       (.add (bind (JLabel.) (labeled "age" age)))))))
-
-
-(defn checkbox-demo []
-  (let [ctrl (make-controller false)]
-    (disp-widget
-     (doto (JPanel.)
-       (.add (bind (JLabel.) (derive-controller
-                              ctrl
-                              (fn [x]
-                                (if x "CHECKED" "NOT CHECKED")))))
-       (.add (bind (JCheckBox. "A checkbox") ctrl))))
-    ctrl))
-
-(defn button-demo []
-  (let [b (bind (JButton. "Rulle")
-                (fn []
-                  (log-message "Performed!!!")))
-        f (JFrame.)]
-    (doto f
-      (.add b)
-      (.pack)
-      (.show))))
-
-(defn spinner-demo []
-  (let [ctrl (make-controller 0)]
-    (disp-widget
-     (doto (JPanel.)
-       (.add (bind (JSpinner.
-                    (SpinnerNumberModel.
-                     (Integer. 1)
-                     (Integer. 0)
-                     nil
-                     (Integer. 1)))
-                   ctrl))
-       (.add (bind (JLabel.)
-                   (int2str ctrl)))))))
-                   
-
-(defn text-area-demo []
-  (let [ctrl (make-controller "")
-        text (bind (JTextArea. 30 30) ctrl)
-        label (bind (JLabel.) ctrl)]
-    (disp-widget
-     (doto (JPanel.)
-       (.add text)
-       (.add label)))))
-
 (defn panel-demo []
   (let [ctrl (make-controller {1 "Rulle", 2 "Mjao"})
         panel (JPanel.)]
@@ -743,71 +631,6 @@
        (update-sync
         ctrl
         (fn [x] (dissoc x key))))]))
-
-(defn list-demo-single []
-  (let [model (atom {:index 1 :items ["Rulle" "Katja" "Havsan"]})
-        ctrl (make-controller model)
-        label (bind (JLabel. "")
-                    (derive-controller ctrl str))]
-    (disp-widget label)
-    (attach-close-button (disp-widget
-                          (bind (JList.)
-                                ctrl)))
-    model))
-
-(defn list-demo-multi []
-  (let [model (atom {:inds [] :items ["Rulle" "Katja" "Havsan"]})
-        ctrl (make-controller model)
-        label (bind (JLabel. "")
-                    (derive-controller ctrl str))]
-    (disp-widget label)
-    (disp-widget
-     (bind (JList.)
-           ctrl))
-    model))
-
-(defn combo-box-demo []
-  (let [model (atom {:index 0 :items ["Rulle" "Katja" "Havsan"]})
-        ctrl (make-controller model)]
-    (attach-close-button (disp-widget (bind (JComboBox.) ctrl)))
-    (attach-close-button (disp-widget (bind (JLabel. "") (derive-controller ctrl str))))
-    model))
-
-(defn radio-button-demo []
-  (let [close-button (JButton. "Close all")
-        model (atom :rulle)
-        ctrl (make-controller model)
-        b0 (JRadioButton. "Rulle")
-        b1 (JRadioButton. "Havsan")]
-    (bind-radio-buttons {:rulle b0, :havsan b1} ctrl)
-    
-    (let [frames [(disp-widget
-                   (bind (JLabel. "")
-                         (derive-controller ctrl
-                                            (fn [x]
-                                              (str "Current selection: " x)))))
-                  (disp-widget b0)
-                  (disp-widget b1)]]
-      (.addActionListener close-button
-                          (proxy [ActionListener] []
-                            (actionPerformed [e]
-                              (doseq [x frames]
-                                (.dispose x)))))
-      (disp-widget close-button))))
-
-(defn toggle-button-demo []
-  (let [model (atom false)
-        ctrl (make-controller model)]
-    (attach-close-button
-     (disp-widget (bind-toggle-button (JButton.) ["false" "true"] ctrl)))))
-
-(defn bind-enabled [widget controller]
-  (bind-widget-updater
-   widget controller
-   (fn [old-value new-value]
-     (.setEnabled widget (if new-value true false)))))
-
-
 
 
 ;;;; Bindings
