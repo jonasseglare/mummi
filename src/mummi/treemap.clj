@@ -1,6 +1,9 @@
 (ns mummi.treemap
   (:require [mummi.common :refer [map-with-keys?]]))
 
+(defn make-tree-map-from-single-node [x]
+  [{:index 0 :data x :parent nil}])
+
 (defn add-child-to-map-entry [dst child]
   (if (nil? (:children dst))
     (assoc dst :children (set [child]))

@@ -88,7 +88,7 @@
 (defmacro value-of [expr & remaining]
   (let [result (gensym)]
     `(let [~result ~expr]
-       (log-message (str (quote ~expr) " = \n" (with-out-str (pprint ~result))))
+       (println (str (quote ~expr) " = \n" (with-out-str (pprint ~result))))
        ~(if (empty? remaining)
           result
           `(value-of ~@remaining)))))

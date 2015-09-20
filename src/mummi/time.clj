@@ -37,6 +37,9 @@
   (assert (Calendar? calendar))
   (quantity/make-milliseconds (.getTimeInMillis calendar)))
 
+(defn now-as-quantity []
+  (calendar-to-time (now)))
+
 (defn time-to-calendar [time]
   (doto (Calendar/getInstance)
     (.setTimeInMillis
