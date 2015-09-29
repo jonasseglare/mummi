@@ -64,10 +64,13 @@
       (JComboBox.)
       unit-ctrl))))
 
-(defn make-time-edit [units quantity-controller]
-  (let [labels (map (fn [unit] (get q/time-labels unit)) units)
-        pairs (vec (map vector labels units))]
-    (make-quantity-edit q/time-system pairs quantity-controller)))
+(defn make-time-edit
+  ([units quantity-controller]
+   (let [labels (map (fn [unit] (get q/time-labels unit)) units)
+         pairs (vec (map vector labels units))]
+     (make-quantity-edit q/time-system pairs quantity-controller)))
+  ([quantity-controller]
+   (make-time-edit [:seconds :minutes :hours :days] quantity-controller)))
     
 
 

@@ -18,3 +18,6 @@
 
 (defn spec? [x]
   (map? x))
+
+(defn get-table-schema [db]
+  (jdbc/query db "SELECT * FROM INFORMATION_SCHEMA.TABLES"))

@@ -1,6 +1,7 @@
 (ns mummi.db.edges
   (:require [clojure.java.jdbc :as jdbc])
   (:require [mummi.debug :as debug])
+  (:require [mummi.common :as common])
   (:require [mummi.db.utils :as utils]))
 
 (defn active-name [main-name]
@@ -71,12 +72,21 @@
    spec
    (str "SELECT src,dst FROM " (active-name table-name) " WHERE active=true")))
 
-(defn get-edges-from [spec table-name src all?]
+(defn get-edges-from-or-to [spec table-name from-or-to x all?]
+  (common/validate-data (fn [x] (contains? #{:from :to} from-or-to)) from-or-to)
   (jdbc/query
    spec
    [(str "SELECT src,dst FROM " (active-name table-name) " WHERE "
-         (if all? "" "active=true AND ") "src=?")
-    src]))
+         (if all? "" "active=true AND ") (if (= :from from-or-to) "src" "dst")
+         "=?")
+    x]))
+
+
+(defn get-edges-from [spec table-name src all?]
+  (get-edges-from-or-to spec table-name :from src all?))
+
+(defn get-edges-to [spec table-name src all?]
+  (get-edges-from-or-to spec table-name :to src all?))
 
 (defn get-active-edges-from [spec table-name src]
   (get-edges-from spec table-name src false))
