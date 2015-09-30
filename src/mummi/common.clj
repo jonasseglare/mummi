@@ -475,6 +475,10 @@
        {:symbols-to-replace (quote ~symbols-to-replace)
         :body (quote ~body)})))
 
+(defn positive-integer? [x]
+  (and (integer? x)
+       (< 0 x)))
+
 (defn template? [x]
   (map-with-keys? x :body :symbols-to-replace))
 
