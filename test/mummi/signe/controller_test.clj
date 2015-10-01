@@ -17,3 +17,16 @@
       (is (= 119 (get-local-state a-ctrl)))
       (is (= {:a 119 :b 120} (get-state c-ctrl)))
       (is (= {:a 119 :b 120} (get-local-state c-ctrl))))))
+
+(deftest lock-test
+  (testing "locking mechanism"
+    (let [lock (make-lock)]
+      (is (acquire-lock lock))
+      (is (not (acquire-lock lock)))
+      (is (not (acquire-lock lock)))
+      (release-lock lock)
+      (is (acquire-lock lock))
+      (is (not (acquire-lock lock)))
+      (is (not (acquire-lock lock))))))
+      
+

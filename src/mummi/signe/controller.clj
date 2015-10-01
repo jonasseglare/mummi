@@ -398,3 +398,27 @@
 (defn get-root-channel [ctrl]
   (:now-channel (get-root-controller ctrl)))
 
+(defn make-lock
+  ([state] (atom state))
+  ([] (make-lock false)))
+
+(defn acquire-lock [lock]
+  (let [result (atom false)]
+    (swap! lock (fn [x]
+                  (when (not x)
+                    (reset! result true))
+                  true))
+    (deref result)))
+
+(defn release-lock [lock]
+  (reset! lock false))
+
+(defn subscribe-exclusive [ctrl fun init?]
+  (let [lock (atom false)
+        subscriber-fun (if init? subscribe-and-update subscribe)]
+    (subscriber-fun
+     ctrl
+     (fn [oldv newv]
+       (when (acquire-lock lock)
+         (fun oldv newv)
+         (release-lock lock))))))
