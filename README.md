@@ -2,8 +2,6 @@
 
 This is my public, work-in-progress, Clojure library where I collect reusable parts of my code. Feel free to use it in your own projects under the terms of the license.
 
-I may split it up into different libraries later...
-
 ## Features
 
  * GUI utilities for Swing
