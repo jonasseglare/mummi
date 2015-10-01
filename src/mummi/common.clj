@@ -482,6 +482,7 @@
 (defn template? [x]
   (map-with-keys? x :body :symbols-to-replace))
 
+
 (defmacro instantiate [template-name dst]
   (let [template (eval template-name)]
     (assert (template? template))
@@ -489,6 +490,15 @@
             (:symbols-to-replace template)
             dst
             (:body template)))))
+
+(defn repeated-apply [f n value]
+  (validate-data fn? f)
+  (validate-data number? n)
+  (loop [m n
+         out value]
+    (if (= 0 m) out
+        (recur (- m 1) (f out)))))
+
 
 (comment
   

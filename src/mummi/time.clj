@@ -45,6 +45,11 @@
     (.setTimeInMillis
      (quantity/get-milliseconds time))))
 
+(defn some-time-ago [some-time]
+  (time-to-calendar
+   (quantity/make-milliseconds
+    (- (.getTimeInMillis (now))
+       (quantity/get-milliseconds some-time)))))
 
 
   
